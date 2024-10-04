@@ -1,0 +1,14 @@
+2024/10/03 * Opening Balance
+    Assets:Cash                                  500 €
+    Assets:Debit Card                            500 €
+    Equity:Opening Balances                    -1000 €
+
+2024/10/04 Moe's restaurant
+    Expenses:Restaurant:Food                      20 €
+    Expenses:Restaurant:Tips                       2 €
+    Assets:Cash                                  -12 €
+    Assets:Debit Card                            -10 €
+
+2024/10/05 Mike's convenience store
+    Expenses:Groceries                         35,95 €
+    Assets:Cash                               -35,95 €

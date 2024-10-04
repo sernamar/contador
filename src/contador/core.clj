@@ -86,3 +86,23 @@
       :status (parse-status status)
       :payee payee
       :entries (map #(parse-entry % locale currency) entries)})))
+
+;;; Read journal functions
+
+(defn- read-transactions
+  "Reads the transactions from the given file."
+  [file]
+  (-> file
+      slurp
+      (str/split #"(\n\n)|(\n*$)")))
+
+(defn read-journal
+  "Reads the journal from the given file."
+  ([file]
+   (read-journal file (Locale/getDefault)))
+  ([file locale]
+   (read-journal file locale (currency-code locale)))
+  ([file locale currency]
+   {:locale locale
+    :currency currency
+    :transactions (map #(parse-transaction (str/split % #"\n") locale currency) (read-transactions file))}))
