@@ -106,3 +106,30 @@
    {:locale locale
     :currency currency
     :transactions (map #(parse-transaction (str/split % #"\n") locale currency) (read-transactions file))}))
+
+
+;;; Balance functions
+
+(defn- date-between?
+  "Checks if the given date is between the given start and end dates (both inclusive)."
+  [date start end]
+  (not (or (LocalDate/.isBefore date start) (LocalDate/.isAfter date end))))
+
+(defn filter-transactions-by-date
+  "Filters the given transactions by the given date range."
+  [transactions start end]
+  (filter #(date-between? (:date %) start end) transactions))
+
+(defn filter-entries-by-account-name
+  "Filters the given entries by the given account name."
+  [entries account-name]
+  (filter #(str/includes? (:account %) account-name) entries))
+
+(defn get-balance
+  "Returns the balance of the given account name in the given journal."
+  [journal account-name & {:keys [start-date end-date] :or {start-date LocalDate/MIN end-date LocalDate/MAX}}]
+  (let [transactions (filter-transactions-by-date (:transactions journal) start-date end-date)
+        entries (mapcat :entries transactions)
+        entries (filter-entries-by-account-name entries account-name)
+        amounts (map :amount entries)]
+    (reduce dinero/add amounts)))

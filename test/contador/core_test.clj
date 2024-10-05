@@ -7,6 +7,8 @@
            [java.time LocalDate]
            [java.util Locale]))
 
+;;; Parse monetary amounts functions
+
 (t/deftest parse-monetary-amount
   (let [germany Locale/GERMANY]
     (t/is (= (dinero/money-of 1 :eur) (sut/parse-monetary-amount "1" germany)))
@@ -33,6 +35,8 @@
     (t/is (= (dinero/money-of 1 :gbp) (sut/parse-monetary-amount "£1" uk)))
     (t/is (= (dinero/money-of 1.23 :gbp) (sut/parse-monetary-amount "£1.23" uk)))
     (t/is (= (dinero/money-of 1.23 :eur) (sut/parse-monetary-amount "€1.23" uk :eur)))))
+
+;;; Parse transactions functions
 
 (t/deftest parse-entry
   (let [germany Locale/GERMANY]
@@ -63,29 +67,90 @@
     (t/is (= {:date (LocalDate/of 2024 10 03)
               :status :cleared
               :payee "Opening Balance"
-              :entries [{:account "Assets:Cash" :amount (dinero/money-of 1234.56 :eur)}
-                        {:account "Assets:Debit Card" :amount (dinero/money-of 1000 :eur)}]}
+              :entries [{:account "Assets:Cash" :amount (dinero/money-of 500 :eur)}
+                        {:account "Assets:Debit Card" :amount (dinero/money-of 500 :eur)}
+                        {:account "Equity:Opening Balances" :amount (dinero/money-of -1000 :eur)}]}
              (sut/parse-transaction ["2024/10/03 * Opening Balance"
-                                     "    Assets:Cash                                  1234,56 €"
-                                     "    Assets:Debit Card                               1000 €"]
+                                     "    Assets:Cash                                    500 €"
+                                     "    Assets:Debit Card                              500 €"
+                                     "    Equity:Opening Balances                      -1000 €"]
                                     germany)))
     (t/is (= {:date (LocalDate/of 2024 10 03)
               :status :cleared
               :payee "Opening Balance"
-              :entries [{:account "Assets:Cash" :amount (dinero/money-of 1234.56 :gbp)}
-                        {:account "Assets:Debit Card" :amount (dinero/money-of 1000 :gbp)}]}
+              :entries [{:account "Assets:Cash" :amount (dinero/money-of 500 :gbp)}
+                        {:account "Assets:Debit Card" :amount (dinero/money-of 500 :gbp)}
+                        {:account "Equity:Opening Balances" :amount (dinero/money-of -1000 :gbp)}]}
              (sut/parse-transaction ["2024/10/03 * Opening Balance"
-                                     "    Assets:Cash                                1234,56 £"
-                                     "    Assets:Debit Card                             1000 £"]
+                                     "    Assets:Cash                                    500 £"
+                                     "    Assets:Debit Card                              500 £"
+                                     "    Equity:Opening Balances                      -1000 £"]
                                     germany
                                     :gbp))))
   (let [uk Locale/UK]
     (t/is (= {:date (LocalDate/of 2024 10 03)
               :status :cleared
               :payee "Opening Balance"
-              :entries [{:account "Assets:Cash" :amount (dinero/money-of 1234.56 :gbp)}
-                        {:account "Assets:Debit Card" :amount (dinero/money-of 1000 :gbp)}]}
+              :entries [{:account "Assets:Cash" :amount (dinero/money-of 500 :gbp)}
+                        {:account "Assets:Debit Card" :amount (dinero/money-of 500 :gbp)}
+                        {:account "Equity:Opening Balances" :amount (dinero/money-of -1000 :gbp)}]}
              (sut/parse-transaction ["2024/10/03 * Opening Balance"
-                                     "    Assets:Cash                                   £1234.56"
-                                     "    Assets:Debit Card                                £1000"]
+                                     "    Assets:Cash                                     £500"
+                                     "    Assets:Debit Card                               £500"
+                                     "    Equity:Opening Balances                       -£1000"]
                                     uk)))))
+
+;;; Balance functions
+
+(def journal ^:private
+  {:locale Locale/GERMANY
+   :currency :eur
+   :transactions [{:date (LocalDate/of 2024 10 03)
+                   :status :cleared
+                   :payee "Opening Balance"
+                   :entries [{:account "Assets:Cash" :amount (dinero/money-of 500 :eur)}
+                             {:account "Assets:Debit Card" :amount (dinero/money-of 500 :eur)}
+                             {:account "Equity:Opening Balances" :amount (dinero/money-of -1000 :eur)}]}
+                  {:date (LocalDate/of 2024 10 04)
+                   :status nil
+                   :payee "Moe's restaurant"
+                   :entries [{:account "Expenses:Restaurant:Food" :amount (dinero/money-of 20 :eur)}
+                             {:account "Expenses:Restaurant:Tips" :amount (dinero/money-of 2 :eur)}
+                             {:account "Assets:Cash" :amount (dinero/money-of -12 :eur)}
+                             {:account "Assets:Debit Card" :amount (dinero/money-of -10 :eur)}]}
+                  {:date (LocalDate/of 2024 10 05)
+                   :status nil
+                   :payee "Mike's convenience store"
+                   :entries [{:account "Expenses:Groceries" :amount (dinero/money-of 35.95 :eur)}
+                             {:account "Assets:Cash" :amount (dinero/money-of -35.95 :eur)}]}]})
+
+(t/deftest filter-transactions-by-date
+  (let [transactions (:transactions journal)]
+    (t/is (= (list (first transactions))
+             (sut/filter-transactions-by-date transactions (LocalDate/of 2024 10 01) (LocalDate/of 2024 10 03))))
+    (t/is (= (rest transactions)
+             (sut/filter-transactions-by-date transactions (LocalDate/of 2024 10 04) (LocalDate/of 2024 10 05))))
+    (t/is (= transactions
+             (sut/filter-transactions-by-date transactions (LocalDate/of 2024 10 01) (LocalDate/of 2024 10 05))))))
+
+(t/deftest filter-entries-by-account-name
+  (let [transactions (:transactions journal)
+        entries (:entries (first transactions))]
+    (t/is (= (list (first entries))
+             (sut/filter-entries-by-account-name entries "Assets:Cash")))
+    (t/is (= (take 2 entries)
+             (sut/filter-entries-by-account-name entries "Assets")))
+    (t/is (empty? (sut/filter-entries-by-account-name entries "Expenses")))))
+
+(t/deftest get-balance
+  (t/is (= (dinero/money-of 452.05 :eur)
+           (sut/get-balance journal "Assets:Cash")))
+  (t/is (= (dinero/money-of 500 :eur)
+           (sut/get-balance journal "Assets:Cash"
+                            {:start-date (LocalDate/of 2024 10 01) :end-date (LocalDate/of 2024 10 03)})))
+  (t/is (= (dinero/money-of -12 :eur)
+           (sut/get-balance journal "Assets:Cash"
+                            {:start-date (LocalDate/of 2024 10 04) :end-date (LocalDate/of 2024 10 04)})))
+  (t/is (= (dinero/money-of -47.95 :eur)
+           (sut/get-balance journal "Assets:Cash"
+                            {:start-date (LocalDate/of 2024 10 04) :end-date (LocalDate/of 2024 10 05)}))))
