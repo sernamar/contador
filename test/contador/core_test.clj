@@ -100,7 +100,7 @@
                                      "    Equity:Opening Balances                       -£1000"]
                                     uk)))))
 
-;;; Balance functions
+;;; Transactions functions
 
 (def journal ^:private
   {:locale Locale/GERMANY
@@ -132,6 +132,40 @@
              (sut/filter-transactions-by-date transactions (LocalDate/of 2024 10 04) (LocalDate/of 2024 10 05))))
     (t/is (= transactions
              (sut/filter-transactions-by-date transactions (LocalDate/of 2024 10 01) (LocalDate/of 2024 10 05))))))
+
+(t/deftest filter-transactions-by-payee
+  (let [transactions (:transactions journal)]
+    (t/is (= (list (first transactions))
+             (sut/filter-transactions-by-payee transactions "Opening Balance"))
+    (t/is (= (list (second transactions))
+             (sut/filter-transactions-by-payee transactions "Moe's restaurant"))
+    (t/is (= (list (last transactions))
+             (sut/filter-transactions-by-payee transactions "Mike's convenience store")))))))
+
+(t/deftest filter-transactions-by-account-name
+  (let [transactions (:transactions journal)]
+    (t/is (= transactions
+             (sut/filter-transactions-by-account-name transactions "Assets")))
+    (t/is (= transactions
+             (sut/filter-transactions-by-account-name transactions "Assets:Cash")))
+    (t/is (= (take 2 transactions)
+             (sut/filter-transactions-by-account-name transactions "Assets:Debit Card")))
+    (t/is (= (rest transactions)
+             (sut/filter-transactions-by-account-name transactions "Expenses")))))
+
+(t/deftest get-transactions
+  (let [transactions (:transactions journal)]
+    (t/is (= (list (first transactions))
+             (sut/get-transactions journal {:payee "Balance" :account-name "Cash"})))
+    (t/is (= (list (first transactions))
+             (sut/get-transactions journal {:account-name "Cash" :end-date (LocalDate/of 2024 10 03)})))
+    (t/is (= (list (second transactions))
+             (sut/get-transactions journal {:account-name "Expenses" :end-date (LocalDate/of 2024 10 04)})))
+    (t/is (= (list (second transactions))
+             (sut/get-transactions journal {:payee "Moe's restaurant" :account-name "Cash"})))
+    (t/is (empty? (sut/get-transactions journal :start-date (LocalDate/of 2024 10 01) :end-date (LocalDate/of 2024 10 02))))))
+
+;;; Balance functions
 
 (t/deftest filter-entries-by-account-name
   (let [transactions (:transactions journal)

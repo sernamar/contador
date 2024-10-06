@@ -107,8 +107,7 @@
     :currency currency
     :transactions (map #(parse-transaction (str/split % #"\n") locale currency) (read-transactions file))}))
 
-
-;;; Balance functions
+;;; Transactions functions
 
 (defn- date-between?
   "Checks if the given date is between the given start and end dates (both inclusive)."
@@ -119,6 +118,29 @@
   "Filters the given transactions by the given date range."
   [transactions start end]
   (filter #(date-between? (:date %) start end) transactions))
+
+(defn filter-transactions-by-payee
+  "Filters the given transactions by the given payee."
+  [transactions payee]
+  (filter #(str/includes? (:payee %) payee) transactions))
+
+(defn filter-transactions-by-account-name
+  "Filters the given transactions by the given account name."
+  [transactions account-name]
+  (filter #(some (fn [entry] (str/includes? (:account entry) account-name)) 
+                 (:entries %)) 
+          transactions))
+
+(defn get-transactions
+  "Returns the transactions filtered by the given parameters."
+  [journal & {:keys [payee account-name start-date end-date] :or {payee "" account-name "" start-date LocalDate/MIN end-date LocalDate/MAX}}]
+  (-> journal
+      :transactions
+      (filter-transactions-by-payee payee)
+      (filter-transactions-by-account-name account-name)
+      (filter-transactions-by-date start-date end-date)))
+
+;;; Balance functions
 
 (defn filter-entries-by-account-name
   "Filters the given entries by the given account name."
