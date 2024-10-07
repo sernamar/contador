@@ -1,15 +1,15 @@
 * contador
 Double-entry accounting system.
 ** Usage
-*** Read a journal from a file
-To read a journal form a file we use the =read-journal= function:
+*** Reading a journal from a file
+To read a journal form a file, use the =read-journal= function:
 #+begin_src clojure
   (require '[contador.core :as contador])
   (require '[clojure.java.io :as io])
 
   (contador/read-journal (io/resource "examples/euros-with-germany-locale-formatting.ledger"))
 #+end_src
-It returns a ledger object:
+This returns a ledger object:
 #+begin_src clojure
   {:locale #object[java.util.Locale 0x7f331202 "es_ES"],
    :currency :eur,
@@ -43,7 +43,7 @@ It returns a ledger object:
       {:account "Assets:Cash",
        :amount {:amount -35.95M, :currency :eur}})})}
 #+end_src
-If the ledger file contains monetary amounts formatted according to a specific locale or currency, you can provide both as arguments to =read-journal= for accurate parsing:
+If the journal file includes monetary amounts formatted according to specific locales or currencies, you can pass these as arguments to =read-journal= for accurate parsing:
 #+begin_src clojure
   (import '[java.util Locale])
 
@@ -53,8 +53,8 @@ If the ledger file contains monetary amounts formatted according to a specific l
   (contador/read-journal (io/resource "examples/pounds-with-germany-locale-formatting.ledger") Locale/GERMANY :gbp)
 #+end_src
 If no currency information is provided in the ledger, the system's default locale currency is used.
-*** Get the balance of an account
-You can get the balance of a specific =account= from a given =journal= using the =get-balance= function:
+*** Getting an account balance
+To retrieve the balance of a specific account from a journal, use the =get-balance= function:
 #+begin_src clojure
   (import '[java.time LocalDate])
 
@@ -67,7 +67,7 @@ You can get the balance of a specific =account= from a given =journal= using the
   ;; => {:amount 500M, :currency :eur}
 #+end_src
 *** Filtering transactions by criteria
-You can filter transactions from a given =journal= using the =get-transactions= function. Transactions can be filtered based on one or more criteria, such as =payee=, =account name=, =start date=, or =end date=:
+You can filter transactions from a =journal= using the =get-transactions= function. Transactions can be filtered based on one or more criteria, such as =payee=, =account name=, =start date=, or =end date=:
 #+begin_src clojure
   (contador/get-transactions journal {:payee "Balance" :account-name "Cash"})
   ;; => ({:date #object[java.time.LocalDate 0x1fbc66f6 "2024-10-03"],
