@@ -1,5 +1,99 @@
 * contador
 Double-entry accounting system.
+** Usage
+*** Read a journal from a file
+To read a journal form a file we use the =read-journal= function:
+#+begin_src clojure
+  (require '[contador.core :as contador])
+  (require '[clojure.java.io :as io])
+
+  (contador/read-journal (io/resource "examples/euros-with-germany-locale-formatting.ledger"))
+#+end_src
+It returns a ledger object:
+#+begin_src clojure
+  {:locale #object[java.util.Locale 0x7f331202 "es_ES"],
+   :currency :eur,
+   :transactions
+   ({:date #object[java.time.LocalDate 0x5f00100f "2024-10-03"],
+     :status :cleared,
+     :payee "Opening Balance",
+     :entries
+     ({:account "Assets:Cash", :amount {:amount 500M, :currency :eur}}
+      {:account "Assets:Debit Card",
+       :amount {:amount 500M, :currency :eur}}
+      {:account "Equity:Opening Balances",
+       :amount {:amount -1000M, :currency :eur}})}
+    {:date #object[java.time.LocalDate 0x5f90671e "2024-10-04"],
+     :status nil,
+     :payee "Moe's restaurant",
+     :entries
+     ({:account "Expenses:Restaurant:Food",
+       :amount {:amount 20M, :currency :eur}}
+      {:account "Expenses:Restaurant:Tips",
+       :amount {:amount 2M, :currency :eur}}
+      {:account "Assets:Cash", :amount {:amount -12M, :currency :eur}}
+      {:account "Assets:Debit Card",
+       :amount {:amount -10M, :currency :eur}})}
+    {:date #object[java.time.LocalDate 0x24846005 "2024-10-05"],
+     :status nil,
+     :payee "Mike's convenience store",
+     :entries
+     ({:account "Expenses:Groceries",
+       :amount {:amount 35.95M, :currency :eur}}
+      {:account "Assets:Cash",
+       :amount {:amount -35.95M, :currency :eur}})})}
+#+end_src
+If the ledger file contains monetary amounts formatted according to a specific locale or currency, you can provide both as arguments to =read-journal= for accurate parsing:
+#+begin_src clojure
+  (import '[java.util Locale])
+
+  (contador/read-journal (io/resource "examples/no-currency-with-germany-locale-formatting.ledger")                       Locale/GERMANY)
+  (contador/read-journal (io/resource "examples/pounds-with-uk-locale-formatting.ledger") Locale/UK)
+
+  (contador/read-journal (io/resource "examples/pounds-with-germany-locale-formatting.ledger") Locale/GERMANY :gbp)
+#+end_src
+If no currency information is provided in the ledger, the system's default locale currency is used.
+*** Get the balance of an account
+You can get the balance of a specific =account= from a given =journal= using the =get-balance= function:
+#+begin_src clojure
+  (import '[java.time LocalDate])
+
+  (def journal (contador/read-journal (io/resource "examples/euros-with-germany-locale-formatting.ledger")))
+
+  (contador/get-balance journal "Assets:Cash")
+  ;; => {:amount 452.05M, :currency :eur}
+
+  (contador/get-balance journal "Assets:Cash" {:start-date (LocalDate/of 2024 10 01) :end-date (LocalDate/of 2024 10 03)})
+  ;; => {:amount 500M, :currency :eur}
+#+end_src
+*** Filtering transactions by criteria
+You can filter transactions from a given =journal= using the =get-transactions= function. Transactions can be filtered based on one or more criteria, such as =payee=, =account name=, =start date=, or =end date=:
+#+begin_src clojure
+  (contador/get-transactions journal {:payee "Balance" :account-name "Cash"})
+  ;; => ({:date #object[java.time.LocalDate 0x1fbc66f6 "2024-10-03"],
+  ;;      :status :cleared,
+  ;;      :payee "Opening Balance",
+  ;;      :entries ({:account "Assets:Cash", :amount {:amount 500M, :currency :eur}}
+  ;;                {:account "Assets:Debit Card", :amount {:amount 500M, :currency :eur}}
+  ;;                {:account "Equity:Opening Balances", :amount {:amount -1000M, :currency :eur}})})
+
+  (contador/get-transactions journal {:account-name "Cash" :end-date (LocalDate/of 2024 10 03)})
+  ;; => ({:date #object[java.time.LocalDate 0x1fbc66f6 "2024-10-03"],
+  ;;      :status :cleared,
+  ;;      :payee "Opening Balance",
+  ;;      :entries ({:account "Assets:Cash", :amount {:amount 500M, :currency :eur}}
+  ;;                {:account "Assets:Debit Card", :amount {:amount 500M, :currency :eur}}
+  ;;                {:account "Equity:Opening Balances", :amount {:amount -1000M, :currency :eur}})})
+
+  (contador/get-transactions journal {:account-name "Expenses" :end-date (LocalDate/of 2024 10 04)})
+  ;; => ({:date #object[java.time.LocalDate 0x4d778c6 "2024-10-04"],
+  ;;      :status nil,
+  ;;      :payee "Moe's restaurant",
+  ;;      :entries ({:account "Expenses:Restaurant:Food", :amount {:amount 20M, :currency :eur}}
+  ;;                {:account "Expenses:Restaurant:Tips", :amount {:amount 2M, :currency :eur}}
+  ;;                {:account "Assets:Cash", :amount {:amount -12M, :currency :eur}}
+  ;;                {:account "Assets:Debit Card", :amount {:amount -10M, :currency :eur}})})
+#+end_src
 ** License
 Copyright © 2024 Sergio Navarro
 
