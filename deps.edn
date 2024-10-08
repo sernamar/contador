@@ -1,7 +1,7 @@
 {:paths ["src" "resources"]
 
  :deps {org.clojure/clojure {:mvn/version "1.12.0"}
-        io.github.sernamar/dinero {:git/tag "v0.1.1" :git/sha "404bff0"}}
+        io.github.sernamar/dinero {:mvn/version "0.1.1"}}
  
  :aliases
  {:test {:extra-paths ["test"]
